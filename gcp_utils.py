@@ -60,9 +60,9 @@ def fetch_directory_from_bucket(
 
 
 if __name__ == "__main__":
-    # upload_to_bucket("fineweb-datasets", "test.txt", "test.txt")
-    upload_directory_to_bucket(
-        "fineweb-datasets",
-        "data/tiny-dataset-processed.parquet",
-        "tiny-dataset-processed",
-    )
+    upload_to_bucket("fineweb-datasets", "test.txt", "test.txt")
+    # upload_directory_to_bucket(
+    #     "fineweb-datasets",
+    #     "data/tiny-dataset-processed.parquet",
+    #     "tiny-dataset-processed",
+    # )

@@ -1,17 +1,18 @@
+from gcp_utils import upload_to_bucket
 from model import Classifier
-import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
 from utils import prepare_dataloaders
 
 model = Classifier(384, 256, 6)
 
-n_epochs = 10
+n_epochs = 30
 batch_size = 32
-learning_rate = 0.001
+learning_rate = 0.0005
 
 
-train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders()
+train_dataloader, val_dataloader, test_dataloader = prepare_dataloaders(
+    "data/tiny-dataset-processed.parquet"
+)
 
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -38,3 +39,9 @@ for epoch in range(n_epochs):
 
         accuracy = correct / total
         print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item()}, Accuracy: {accuracy}")
+
+
+scripted_model = torch.jit.script(model)
+scripted_model.save("models/classifier.pt")
+
+upload_to_bucket("fineweb-classifiers", "models/classifier.pt", "classifier.pt")

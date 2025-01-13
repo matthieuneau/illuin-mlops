@@ -1,6 +1,8 @@
 import torch
+import os
 from torch.utils.data import Dataset, DataLoader, random_split
 import pandas as pd
+import glob
 
 batch_size = 32
 
@@ -21,8 +23,9 @@ class MyDataset(Dataset):
         )
 
 
-def prepare_dataloaders():
-    df = pd.read_parquet("datasets/tiny-dataset.parquet")
+def prepare_dataloaders(data_path: str):
+    parquet_files = glob.glob(os.path.join(data_path, "*.parquet"))
+    df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
 
     embeddings = df["embedding"].values
     score = df["score"].values
