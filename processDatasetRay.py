@@ -4,7 +4,7 @@ redundant with what the second part of build dataset does. it's to test ray data
 
 import ray
 from sentence_transformers import SentenceTransformer
-import torch
+from gcp_utils import upload_to_bucket
 import numpy as np
 
 ds = ray.data.read_parquet("data/tiny-dataset.parquet")
@@ -41,7 +41,5 @@ class DataEmbedding:
 
 # Ray will automatically scale the nb of workers
 ds = ds.map_batches(DataEmbedding, concurrency=(2, 6))
-
-ds.show(limit=1)
 
 ds.write_parquet("data/tiny-dataset-processed.parquet")
