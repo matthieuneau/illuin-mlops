@@ -17,8 +17,9 @@ matplotlib = "^3.9.2"
 google-cloud-storage = "^2.19.0"
 scikit-learn = "^1.6.1"
 dvc = { extras = ["gcs"], version = "^3.58.0" }
-ray = { extras = ["default"], version = "^2.39.0" }
+ray = {version = "2.39.0", extras = ["default"]}
 fastapi = "^0.115.6"
+google-api-python-client = "^2.158.0"
 
 
 [build-system]

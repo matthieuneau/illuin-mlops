@@ -1,0 +1,11 @@
+cluster_name: minimal
+
+provider:
+  type: gcp
+  region: us-west1
+  project_id: swift-habitat-447619-k8
+  availability_zone: us-west1-b
+
+auth:
+  ssh_user: matthieuneau #TODO: check
+  ssh_private_key: /Users/matthieuneau/.ssh/google_compute_engine
