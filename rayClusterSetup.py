@@ -18,7 +18,7 @@ def f():
     return socket.gethostbyname("localhost")
 
 
-object_ids = [f.remote() for _ in range(5000)]
+object_ids = [f.remote() for _ in range(10000)]
 ip_addresses = ray.get(object_ids)
 
 print("tasks executed")
