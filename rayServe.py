@@ -1,6 +1,4 @@
-from numpy import dtype
 import ray
-import requests
 from fastapi import FastAPI
 from ray import serve
 import torch
