@@ -6,6 +6,7 @@ from ray import serve
 ray.init(
     address="ray://34.145.33.35:10001"
 )  # TODO: check it is the correct head node ip
+serve.start(http_options={"host": "0.0.0.0", "port": 8000})
 
 app = FastAPI()
 
@@ -19,3 +20,4 @@ class MyFastAPIDeployment:
 
 
 serve.run(MyFastAPIDeployment.bind(), route_prefix="/hello")
+print(serve.status())
