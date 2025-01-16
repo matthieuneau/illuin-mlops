@@ -3,6 +3,10 @@ import requests
 from fastapi import FastAPI
 from ray import serve
 
+ray.init(
+    address="ray://34.145.33.35:10001"
+)  # TODO: check it is the correct head node ip
+
 app = FastAPI()
 
 
@@ -15,5 +19,3 @@ class MyFastAPIDeployment:
 
 
 serve.run(MyFastAPIDeployment.bind(), route_prefix="/hello")
-resp = requests.get("http://localhost:8000/hello")
-assert resp.json() == "Hello, world!"
