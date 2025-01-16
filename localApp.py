@@ -23,5 +23,8 @@ async def predict(input_data: list[float]):
 
 if __name__ == "__main__":
     test_input = torch.rand(384).tolist()
+    with open("input.txt", "w") as f:
+        f.write(str(test_input))
+        f.close()
     response = requests.post("http://localhost:8000/predict_locally", json=test_input)
     print(response.json())

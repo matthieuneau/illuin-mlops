@@ -5,7 +5,7 @@ import torch
 
 ray.init(
     address="ray://34.145.33.35:10001"
-)  # TODO: check it is the correct head node ip
+)  # todo: check it is the correct head node ip
 serve.start(http_options={"host": "0.0.0.0", "port": 8000})
 
 app = FastAPI()
@@ -24,7 +24,7 @@ class MyFastAPIDeployment:
 
     @app.post("/predict_locally")
     async def predict(self, input_data: list[float]):
-        input = torch.Tensor(input_data, dtype=torch.float32)
+        input = torch.tensor(input_data, dtype=torch.float32)
         with torch.no_grad():
             output = model(input)
         return {"output": output.tolist()}
