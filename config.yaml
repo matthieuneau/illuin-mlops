@@ -9,7 +9,3 @@ provider:
 auth:
   ssh_user: matthieuneau #TODO: check
   ssh_private_key: /Users/matthieuneau/.ssh/google_compute_engine
-
-setup_commands:
-  - cd illuin-mlops
-  - git pull
