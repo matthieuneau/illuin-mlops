@@ -27,7 +27,7 @@ class MyFastAPIDeployment:
 
     @app.post("/predict_locally")
     async def predict(self, input_data: list[float]):
-        input = torch.tensor(input_data, dtype=torch.float32)
+        input = torch.tensor([input_data], dtype=torch.float32)
         with torch.no_grad():
             output = self.model(input)
         return {"output": output.tolist()}
