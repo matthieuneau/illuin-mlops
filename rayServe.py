@@ -35,7 +35,7 @@ class MyFastAPIDeployment:
             output = self.model(input)
         return {"output": output.tolist()}
 
-    @app.post("/predict_from_s3")
+    @app.post("/predict_from_bucket")
     async def predict_s3(self, input_data: list[float]):
         """This function downloads the model from gcp bucket every time there is a request"""
         bucket_name = "fineweb-classifiers"
