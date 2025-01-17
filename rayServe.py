@@ -2,6 +2,7 @@ import ray
 from fastapi import FastAPI
 from ray import serve
 import torch
+import os
 
 # TODO: Remove runtime_env when deploying to cloud
 ray.init(address="auto")
@@ -16,7 +17,8 @@ app = FastAPI()
 @serve.ingress(app)
 class MyFastAPIDeployment:
     def __init__(self) -> None:
-        self.model = torch.jit.load("~/models/classifier.pt")
+        model_path = os.path.expanduser("~/models/classifier.pt")
+        self.model = torch.jit.load(model_path)
         self.model.eval()  # Set the model to evaluation mode
 
     @app.get("/")
