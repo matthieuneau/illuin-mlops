@@ -17,7 +17,7 @@ app = FastAPI()
 @serve.ingress(app)
 class MyFastAPIDeployment:
     def __init__(self) -> None:
-        model_path = os.path.expanduser("home/matthieuneau/models/classifier.pt")
+        model_path = os.path.expanduser("/home/matthieuneau/models/classifier.pt")
         self.model = torch.jit.load(model_path)
         self.model.eval()  # Set the model to evaluation mode
 
