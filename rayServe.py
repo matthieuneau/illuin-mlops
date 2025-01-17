@@ -1,5 +1,7 @@
 import ray
+import io
 from fastapi import FastAPI
+from google.cloud import storage
 from ray import serve
 import torch
 import os
@@ -27,9 +29,31 @@ class MyFastAPIDeployment:
 
     @app.post("/predict_locally")
     async def predict(self, input_data: list[float]):
+        """This function calls a model that is already available on the cluster"""
         input = torch.tensor([input_data], dtype=torch.float32)
         with torch.no_grad():
             output = self.model(input)
+        return {"output": output.tolist()}
+
+    @app.post("/predict_from_s3")
+    async def predict_s3(self, input_data: list[float]):
+        """This function downloads the model from gcp bucket every time there is a request"""
+        bucket_name = "fineweb-classifiers"
+        model_blob_name = "classifier.pt"
+
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(model_blob_name)
+
+        model_bytes = blob.download_as_bytes()
+
+        model_gcp_bucket = torch.jit.load(io.BytesIO(model_bytes))
+        model_gcp_bucket.eval()
+
+        input = torch.tensor([input_data], dtype=torch.float32)
+
+        with torch.no_grad():
+            output = model_gcp_bucket(input)
         return {"output": output.tolist()}
 
 
