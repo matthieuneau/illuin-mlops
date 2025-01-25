@@ -1,3 +1,4 @@
+# To launch a ray cluster locally. hard to make it work on MacOS
 cluster_name: local_cluster
 
 docker:
