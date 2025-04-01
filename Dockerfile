@@ -1,11 +1,12 @@
-FROM python:3.12-slim
+FROM rayproject/ray-ml:latest-cpu
+# FROM python:3.12-slim
 
 WORKDIR /app
 
 # Copy only requirements to leverage Docker layer caching
-COPY app/requirements.txt .
+# COPY app/requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ .
 
