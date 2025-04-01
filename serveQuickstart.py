@@ -32,7 +32,8 @@ class Translator:
 translator_app = Translator.bind()
 
 # Connect to Ray cluster
-ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
+# ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
+ray.init(address="auto")
 
 # Start Ray Serve in detached mode
 serve.start(detached=True)
