@@ -36,5 +36,5 @@ translator_app = Translator.bind()
 ray.init(address="auto")
 
 # Start Ray Serve in detached mode
-serve.start(detached=True)
+serve.start(detached=True, http_options={"host": "0.0.0.0"})
 serve.run(translator_app, name="translator_app")

@@ -23,6 +23,8 @@ docker:
   pull_before_run: True
   run_options:  # Extra options to pass into "docker run"
     - --ulimit nofile=65536:65536
+    - -p
+    - "8000:8000"
 
   # Example of running a GPU head with CPU workers
   # head_image: "rayproject/ray-ml:latest-gpu"
