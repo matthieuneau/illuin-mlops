@@ -1,5 +1,7 @@
+pandas
 fastapi
+pydantic
 uvicorn
-google-cloud-storage
-joblib
 torch
+google-cloud-storage
+pyarrow

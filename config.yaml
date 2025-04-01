@@ -1,4 +1,5 @@
 cluster_name: minimal
+max_workers: 4
 
 provider:
   type: gcp

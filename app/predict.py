@@ -17,9 +17,11 @@ def predict(model_bucket: str, model_path: str, data_bucket: str, data_path: str
 
 
 if __name__ == "__main__":
-    predict(
-        "fineweb-classifiers",
-        "classifier.pt",
-        "fineweb-datasets",
-        "tiny-dataset-processed/3_000000_000000.parquet",
+    print(
+        predict(
+            "fineweb-classifiers",
+            "classifier.pt",
+            "fineweb-datasets",
+            "tiny-dataset-processed/3_000000_000000.parquet",
+        )
     )
