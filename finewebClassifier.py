@@ -28,7 +28,7 @@ class FinewebClassifier:
         #     "MODEL_STAGE", "Production"
         # )  # Default to Production if not specified
 
-        model_uri = "models:/FinewebEduClassifier/3"
+        model_uri = "models:/FinewebEduClassifier/2"
 
         try:
             # Load the PyTorch model from MLflow
