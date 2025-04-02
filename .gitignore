@@ -1,4 +1,5 @@
 # Graphana. Ignore for now
+mlruns/
 dashboards/     
 
 data/

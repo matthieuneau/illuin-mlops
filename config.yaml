@@ -25,6 +25,15 @@ docker:
     - --ulimit nofile=65536:65536
     - -p
     - "8000:8000"
+    - -p
+    - "5000:5000"
+    # Add environment variables for MLflow
+    - -e
+    - "MLFLOW_TRACKING_URI=postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db"
+    - -e
+    - "MLFLOW_DEFAULT_ARTIFACT_ROOT=gs://mlflow-artifacts-illuin"
+    - -e
+    - "GOOGLE_APPLICATION_CREDENTIALS=/key.json"
 
   # Example of running a GPU head with CPU workers
   # head_image: "rayproject/ray-ml:latest-gpu"
@@ -167,7 +176,11 @@ setup_commands: []
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands:
-  - pip install google-api-python-client==1.7.8
+  - sudo apt-get update
+  - sudo apt-get install -y postgresql-client
+  - pip install google-api-python-client==1.7.8 psycopg2-binary 
+  - export GOOGLE_APPLICATION_CREDENTIALS=/key.json
+  - nohup mlflow server --backend-store-uri=postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db --default-artifact-root=gs://mlflow-artifacts --host=0.0.0.0 --port=5000 > /tmp/mlflow.log 2>&1 &
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []
