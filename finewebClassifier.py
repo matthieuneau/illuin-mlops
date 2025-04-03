@@ -1,10 +1,10 @@
 import os
 
-import dotenv
 import fsspec
 import mlflow.pytorch
 import ray
 import torch
+from dotenv import load_dotenv
 from ray import serve
 from starlette.requests import Request
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -64,8 +64,8 @@ class FinewebClassifier:
 fineweb_classifier_app = FinewebClassifier.bind()
 
 # Connect to Ray cluster
-# ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
+ray.init(address="auto")
 
 # Start Ray Serve in detached mode
-# serve.start(detached=True, http_options={"host": "0.0.0.0"})
-# serve.run(fineweb_classifier_app, name="fineweb_classifier_app")
+serve.start(detached=True, http_options={"host": "0.0.0.0"})
+serve.run(fineweb_classifier_app, name="fineweb_classifier_app")

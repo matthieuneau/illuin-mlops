@@ -33,7 +33,8 @@ docker:
     - -e
     - "MLFLOW_DEFAULT_ARTIFACT_ROOT=gs://mlflow-artifacts-illuin"
     - -e
-    - "GOOGLE_APPLICATION_CREDENTIALS=/key.json"
+    - "GOOGLE_APPLICATION_CREDENTIALS=~/gcp_credentials/application_default_credentials.json"
+
 
   # Example of running a GPU head with CPU workers
   # head_image: "rayproject/ray-ml:latest-gpu"
@@ -59,7 +60,7 @@ auth:
 # If you do so, make sure to also set "KeyName" in the head and worker node
 # configurations below. This requires that you have added the key into the
 # project wide meta-data.
-#    ssh_private_key: /path/to/your/key.pem
+    ssh_private_key: /Users/matthieuneau/.ssh/ray-autoscaler_gcp_europe-west1_swift-habitat-447619-k8_ubuntu_0.pem
 
 # Tell the autoscaler the allowed node types and the resources they provide.
 # The key is the name of the node type, which is just for debugging purposes.
@@ -74,6 +75,8 @@ available_node_types:
         # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
         node_config:
             machineType: n1-standard-2
+            metadata:
+                KeyName: ray-autoscaler-key
             disks:
               - boot: true
                 autoDelete: true
@@ -108,6 +111,8 @@ available_node_types:
         # For more documentation on available fields, see:
         # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
         node_config:
+            metadata:
+                KeyName: ray-autoscaler-key
             machineType: n1-standard-2
             disks:
               - boot: true
@@ -136,7 +141,8 @@ head_node_type: ray_head_default
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
 file_mounts: 
-  /key.json: "/Users/matthieuneau/.config/gcloud/application_default_credentials.json" 
+  ~/gcp_credentials: "/Users/matthieuneau/.config/gcloud"
+
 
 # Files or directories to copy from the head node to the worker nodes. The format is a
 # list of paths. The same path on the head node will be copied to the worker node.
@@ -162,7 +168,8 @@ rsync_filter:
 # List of commands that will be run before `setup_commands`. If docker is
 # enabled, these commands will run outside the container and before docker
 # is setup.
-initialization_commands: []
+initialization_commands: 
+  - mkdir -p /tmp/gcp_credentials
 
 # List of shell commands to run to set up nodes.
 setup_commands: []
@@ -179,8 +186,9 @@ head_setup_commands:
   - sudo apt-get update
   - sudo apt-get install -y postgresql-client
   - pip install google-api-python-client==1.7.8 psycopg2-binary 
-  - export GOOGLE_APPLICATION_CREDENTIALS=/key.json
   - nohup mlflow server --backend-store-uri=postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db --default-artifact-root=gs://mlflow-artifacts --host=0.0.0.0 --port=5000 > /tmp/mlflow.log 2>&1 &
+  - git clone https://github.com/matthieuneau/illuin-mlops.git
+  - cd illuin-mlops
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []
