@@ -1,10 +1,8 @@
 import os
 
-import fsspec
-import mlflow.pytorch
 import ray
-import torch
 from dotenv import load_dotenv
+from google.cloud import aiplatform
 from ray import serve
 from starlette.requests import Request
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -18,27 +16,24 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 @serve.deployment(num_replicas=2, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
 class FinewebClassifier:
     def __init__(self):
-        os.environ["MLFLOW_TRACKING_URI"] = (
-            "postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db"
+        model_name = "fineweb-edu-classifier"
+        # TODO: figure out how to enforce version
+        version = "1"
+        model = aiplatform.Model.list(
+            project=os.environ["GOOGLE_CLOUD_PROJECT"],
+            location=os.environ["GCP_REGION"],
+            filter=f'display_name="{model_name}" ',
+        )[0]
+
+        # Download model artifacts to a local directory
+        local_model_path = model.download()
+
+        # Load the tokenizer and model from the downloaded path
+        self.tokenizer = AutoTokenizer.from_pretrained(local_model_path)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            local_model_path
         )
-        os.environ["MLFLOW_DEFAULT_ARTIFACT_ROOT"] = "gs://mlflow-artifacts-illuin"
-
-        # model_name = "FinewebEduClassifier"
-        # model_stage = os.getenv(
-        #     "MODEL_STAGE", "Production"
-        # )  # Default to Production if not specified
-
-        model_uri = "models:/FinewebEduClassifier/2"
-
-        try:
-            # Load the PyTorch model from MLflow
-            self.model = mlflow.pytorch.load_model(model_uri)
-        except Exception as e:
-            raise RuntimeError(f"Failed to load model from MLflow: {str(e)}")
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            "HuggingFaceTB/fineweb-edu-classifier"
-        )
+        self.model.eval()
 
     def predict(self, text: str) -> str:
         inputs = self.tokenizer(
@@ -50,7 +45,7 @@ class FinewebClassifier:
 
         return score
 
-    async def __call__(self, http_request: Request) -> str:
+    async def __call__(self, http_request: Request) -> dict:
         text: str = await http_request.json()
         score = self.predict(text)
         result = {

@@ -4,7 +4,7 @@ import mlflow
 import mlflow.pytorch
 from transformers import AutoModelForSequenceClassification
 
-# mlflow.set_tracking_uri("http://34.38.116.114:5000")  # Set your MLflow tracking URI
+# mlflow.set_tracking_uri("http://34.140.189.237:5000")  # Set your MLflow tracking URI
 os.environ["MLFLOW_TRACKING_URI"] = (
     "postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db"
 )
