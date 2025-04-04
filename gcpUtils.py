@@ -152,7 +152,8 @@ def load_model_from_vertex(
     location="europe-west1",
 ):
     """
-    Load a model from Vertex AI Model Registry.
+    Load a model from Vertex AI Model Registry. It determines the bucket in which the model is stored and loads it
+    using the load_model_from_bucket function.
     Args:
         model_name (str): Name of the model in Vertex AI Model Registry
         project_id (str): GCP project ID
@@ -186,10 +187,7 @@ def load_model_from_vertex(
 
     model_uri: str = model.uri
 
-    model_gcs_path = os.path.join(model_uri, "model.pt")
-
-    # TODO: complete
-    model = load_model_from_bucket()
+    model = load_model_from_bucket(model_uri.split("/")[2])
 
     return model
 
@@ -201,6 +199,7 @@ if __name__ == "__main__":
     #     "data/tiny-dataset-processed.parquet",
     #     "tiny-dataset-processed",
     # )
-    model = load_model_from_bucket("dummy-model")
-    # print(model.uri)
+    # model = load_model_from_bucket("dummy-model")
+    model = load_model_from_vertex("dummy_model")
+    # print(model.uri.split("/")[2])
     print(model(torch.tensor([5.0])))
