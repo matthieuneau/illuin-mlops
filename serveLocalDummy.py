@@ -18,7 +18,7 @@ ray.init(address="auto", runtime_env=runtime_env)
 
 
 @serve.deployment(num_replicas=2, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
-class Model:
+class DummyModel:
     def __init__(self):
         # Load model
         self.model = load_model_from_vertex(model_name="dummy_model")
@@ -43,7 +43,7 @@ class Model:
         return {"result": result}
 
 
-app = Model.bind()
+app = DummyModel.bind()
 
 # Connect to Ray cluster
 # ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
@@ -51,4 +51,4 @@ app = Model.bind()
 
 # Start Ray Serve in detached mode
 serve.start(detached=True, http_options={"host": "0.0.0.0"})
-serve.run(app, name="app")
+serve.run(dummy_app, name="dummy_app")

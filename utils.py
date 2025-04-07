@@ -1,8 +1,10 @@
-import torch
-import os
-from torch.utils.data import Dataset, DataLoader, random_split
-import pandas as pd
 import glob
+import os
+
+import datasets
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, Dataset, random_split
 
 batch_size = 32
 
@@ -46,3 +48,35 @@ def prepare_dataloaders(data_path: str):
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataloader, val_dataloader, test_dataloader
+
+
+def download_texts_from_hf(
+    hf_dataset: str, n_texts: int, output_dir: str = "data/texts"
+):
+    """Download a specified number of text samples from a Hugging Face dataset and save them to a local directory.
+    Args:
+    hf_dataset (str): The name of the Hugging Face dataset to download from.
+    n_texts (int): The number of text samples to download.
+    output_dir (str): The local directory where the text samples will be saved.
+    """
+
+    dataset = datasets.load_dataset(
+        hf_dataset,
+        split="train",
+        streaming=True,
+    )
+    dataset = dataset.take(n_texts)
+    dataset = list(dataset)
+
+    for i, text in enumerate(dataset):
+        os.makedirs(output_dir, exist_ok=True)
+        with open(f"{output_dir}/{i}.txt", "w") as f:
+            f.write(text["text"])
+
+
+if __name__ == "__main__":
+    download_texts_from_hf(
+        hf_dataset="Fishfishfishfishfish/Synthetic_text.txt",
+        n_texts=1000,
+        output_dir="data/texts",
+    )
