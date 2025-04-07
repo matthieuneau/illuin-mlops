@@ -27,13 +27,18 @@ docker:
     - "8000:8000"
     - -p
     - "5000:5000"
-    # Add environment variables for MLflow
-    - -e
-    - "MLFLOW_TRACKING_URI=postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db"
-    - -e
-    - "MLFLOW_DEFAULT_ARTIFACT_ROOT=gs://mlflow-artifacts-illuin"
+    #TODO: find a way to properly mount and load the env file
+    # - --env-file
+    # - "~/.env"
     - -e
     - "GOOGLE_APPLICATION_CREDENTIALS=~/gcp_credentials/application_default_credentials.json"
+    - -e 
+    - "RAY_ADDRESS=34.140.189.237"
+    - -e
+    - "GOOGLE_CLOUD_PROJECT=swift-habitat-447619-k8"
+    - -e
+    - "GCP_REGION=europe-west1"
+
 
 
   # Example of running a GPU head with CPU workers
@@ -140,8 +145,11 @@ head_node_type: ray_head_default
 
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
-file_mounts: 
-  ~/gcp_credentials: "/Users/matthieuneau/.config/gcloud"
+# ~/.env: ./.env
+file_mounts: {
+  ~/gcp_credentials: ~/.config/gcloud
+}
+  # /home/ubuntu/.env: "/Users/matthieuneau/Desktop/illuin-mlops/.env"  # Use the absolute path to your .env file
 
 
 # Files or directories to copy from the head node to the worker nodes. The format is a
@@ -187,8 +195,7 @@ head_setup_commands:
   - sudo apt-get install -y postgresql-client
   - pip install google-api-python-client==1.7.8 psycopg2-binary 
   - nohup mlflow server --backend-store-uri=postgresql://postgres:illuin1234@35.233.121.19:5432/ml_flow_db --default-artifact-root=gs://mlflow-artifacts --host=0.0.0.0 --port=5000 > /tmp/mlflow.log 2>&1 &
-  - git clone https://github.com/matthieuneau/illuin-mlops.git
-  - cd illuin-mlops
+  - 'if [ ! -d "illuin-mlops" ]; then git clone https://github.com/matthieuneau/illuin-mlops.git && cd illuin-mlops; fi'
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []

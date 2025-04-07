@@ -1,6 +1,7 @@
 # Graphana. Ignore for now
 mlruns/
 dashboards/     
+env/
 
 data/
 models/
