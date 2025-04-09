@@ -15,7 +15,7 @@ for root, dirs, files in os.walk("data/texts"):
 
 print(f"Max length: {max_length}")
 
-texts = texts[:500]
+texts = texts[:100]
 # print(texts)
 
 # tokenizer = AutoTokenizer.from_pretrained("HuggingFaceTB/fineweb-edu-classifier")
