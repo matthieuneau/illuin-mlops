@@ -21,6 +21,8 @@ docker:
     - "8000:8000"
     - -p
     - "6379:6379"
+    - -p 
+    - "8265:8265"
 
 # The minimum number of workers nodes to launch (0 for local head-only)
 min_workers: 0
@@ -31,7 +33,7 @@ max_workers: 0
 # Commands to start ray on the head node *inside the container*
 head_start_ray_commands:
   - ray stop || true
-  - ray start --head --port=6379 --object-store-memory=3000000000 --dashboard-host=0.0.0.0
+  - ray start --head --port=6379  --dashboard-host=0.0.0.0
 
 # It's good practice to include setup commands if needed, though maybe not for this basic setup
 # setup_commands:
