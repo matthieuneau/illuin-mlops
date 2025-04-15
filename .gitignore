@@ -1,7 +1,9 @@
 # Graphana. Ignore for now
 mlruns/
-dashboards/     
+dashboards/
 env/
+prometheus*/
+.vscode/
 
 data/
 models/
