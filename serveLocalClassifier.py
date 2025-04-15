@@ -85,92 +85,8 @@ class MetricsCollector:
 
 
 @serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
-class EduClassifierModel1:
-    def __init__(self):
-        # print("waiting for debugger to attach...")
-        # debugpy.wait_for_client()
-        # print("debugger attached")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            "HuggingFaceTB/fineweb-edu-classifier"
-        )
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            "HuggingFaceTB/fineweb-edu-classifier"
-        )
-        # We'll use handle to communicate with the metrics collector
-        self.metrics_collector = serve.get_app_handle("metrics_collector")
-
-    def run_inference(self, input_text) -> dict:
-        # Track inference time
-        start_time = time.time()
-
-        input_tokens = self.tokenizer(
-            input_text, return_tensors="pt", padding="longest", truncation=True
-        )
-        outputs = self.model(**input_tokens)
-        logits = outputs.logits.squeeze(-1).float().detach().numpy()
-        score = logits.item()
-        int_score = int(round(max(0, min(score, 5))))
-
-        # Record latency
-        latency = time.time() - start_time
-
-        # Record metrics asynchronously - handle DeploymentResponse correctly
-        self.metrics_collector.record_request.remote()
-        self.metrics_collector.record_score.remote(score, int_score)
-        self.metrics_collector.record_latency.remote(latency)
-
-        result = {
-            "text": input_text,
-            "score": score,
-            "int_score": int_score,
-        }
-        return result
-
-    async def __call__(self, http_request: Request) -> Response:
-        import prometheus_client
-
-        # IMPORTANT: Check the path BEFORE trying to parse JSON
-        if http_request.url.path == "/metrics":
-            try:
-                # Generate metrics
-                metrics_data = prometheus_client.generate_latest()
-
-                # Return a simple text response
-                return Response(
-                    content=metrics_data,
-                    media_type="text/plain; version=0.0.4; charset=utf-8",
-                )
-            except Exception as metrics_error:
-                print(f"Error generating metrics: {str(metrics_error)}")
-                return Response(
-                    content=f"Metrics error: {str(metrics_error)}", status_code=500
-                )
-
-        try:
-            # Increment request counter for regular requests
-            self.metrics_collector.record_request.remote()
-
-            # Only try to parse JSON for non-metrics requests
-            input_text = await http_request.json()
-
-            # Run inference
-            result = self.run_inference(input_text)
-
-            # Return a JSON response
-            return Response(content=json.dumps(result), media_type="application/json")
-
-        except Exception as e:
-            print(f"Error processing request: {str(e)}")
-            return Response(
-                content=json.dumps({"error": str(e)}),
-                status_code=500,
-                media_type="application/json",
-            )
-
-
-@serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
-class EduClassifierModel2:
-    def __init__(self):
+class EduClassifierModel:
+    def __init__(self, name="EduClassifierModel1"):
         # print("waiting for debugger to attach...")
         # debugpy.wait_for_client()
         # print("debugger attached")
@@ -298,8 +214,8 @@ class Ingress:
 
 
 metrics_collector = MetricsCollector.bind()
-classifier_app1 = EduClassifierModel1.bind()
-classifier_app2 = EduClassifierModel2.bind()
+classifier_app1 = EduClassifierModel.bind(name="EduClassifierModel1")
+classifier_app2 = EduClassifierModel.bind(name="EduClassifierModel2")
 
 app = Ingress.bind(classifier_app1, classifier_app2)
 
@@ -321,5 +237,3 @@ while True:
     break
 
 app = serve.run(app, name="app", route_prefix="/")
-# serve.run(classifier_app1, name="classifier_app1", route_prefix="/classifier1")
-# serve.run(classifier_app2, name="classifier_app2", route_prefix="/classifier2")
