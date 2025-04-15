@@ -260,17 +260,41 @@ class Ingress:
     ):
         self.classifier1_handle = classifier_app1
         self.classifier2_handle = classifier_app2
+        print("Ingress initialized with classifier handles")
 
     async def __call__(self, request: Request) -> Response:
-        # Choose the classifier at random for now
-        import random
+        # Basic health check
+        if request.url.path == "/health":
+            return JSONResponse({"status": "healthy"})
 
-        # a = random.randint(0, 1)
-        a = 0
-        if a == 0:
-            return await self.classifier1_handle.remote(request)
-        else:
-            return await self.classifier2_handle.remote(request)
+        # Process the request locally instead of forwarding
+        try:
+            # Try to parse JSON for normal requests
+            try:
+                request_json = await request.json()
+                if isinstance(request_json, dict) and "text" in request_json:
+                    input_text = request_json["text"]
+                else:
+                    input_text = json.dumps(request_json)
+            except:
+                try:
+                    input_text = await request.body()
+                    input_text = input_text.decode("utf-8")
+                except:
+                    input_text = "Failed to parse request body"
+
+            # Forward with text parameter directly instead of the whole request
+            result = await self.classifier1_handle.run_inference.remote(input_text)
+            return JSONResponse(content=result)
+        except Exception as e:
+            import traceback
+
+            error_trace = traceback.format_exc()
+            print(f"Error in Ingress.__call__: {str(e)}\n{error_trace}")
+            return JSONResponse(
+                content={"error": f"Ingress error: {str(e)}"},
+                status_code=500,
+            )
 
 
 metrics_collector = MetricsCollector.bind()
