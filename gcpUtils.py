@@ -16,31 +16,46 @@ def upload_to_bucket(
     blob.upload_from_filename(source_file_path)
 
 
-def load_model_from_bucket(bucket_name: str):
+def load_model_from_bucket(
+    bucket_name: str, folder_name: str = "model_init", file_name: str = "model.pt"
+):
     """
-    Load a TorchScript model from a GCP bucket. A bucket stores a single model in a model.pt file.
+    Load a TorchScript model from a GCP bucket.
+
     Args:
         bucket_name (str): Name of the GCP bucket.
+        folder_name (str): Name of the folder within the bucket. Default is "model_init".
+        file_name (str): Name of the model file. Default is "model.pt".
+
     Returns:
         torch.jit.ScriptModule: The loaded TorchScript model.
     """
-    client = storage.Client()
+    import os
+    import tempfile
+
+    import torch
+    from google.cloud import storage
+
+    client = storage.Client(project="cs-3a-2024-fineweb-mlops")
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob("model.pt")
+
+    # Construct the blob path using folder_name and file_name
+    blob_path = f"{folder_name}/{file_name}"
+    blob = bucket.blob(blob_path)
 
     # Create a named temporary file
     with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as temp_file:
         temp_path = temp_file.name
 
     try:
+        # Download the model to the temporary file
         blob.download_to_filename(temp_path)
+
+        # Load the model
         model = torch.jit.load(temp_path)
         return model
-
     finally:
         # Clean up the temporary file
-        import os
-
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
