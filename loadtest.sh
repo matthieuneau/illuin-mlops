@@ -1,10 +1,11 @@
 start_time=$(date +%s.%N)
 count=0
+num_texts=10
 
 for file in data/texts/*.txt; do
     ((count++))
 
-    if [ $count -gt 100 ]; then
+    if [ $count -gt $num_texts ]; then
         break
     fi
 
@@ -16,4 +17,3 @@ done
 end_time=$(date +%s.%N)
 execution_time=$(echo "$end_time - $start_time" | bc)
 echo "Total execution time: $execution_time seconds"
-done

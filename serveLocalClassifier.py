@@ -272,7 +272,7 @@ class EnglishClassifier(EduClassifierModel):
         )
 
 
-if __name__ == "__main__":
+def launch_application():
     metrics_collector = MetricsCollector.bind()
     time.sleep(2)  # Wait for the metrics collector to initialize
     serve.run(metrics_collector, name="metrics_collector", route_prefix="/metrics")
@@ -283,11 +283,20 @@ if __name__ == "__main__":
 
     app = Ingress.bind(classifier_deployment_french, classifier_deployment_english)
 
-    # Connect to Ray cluster
-    # ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
-    # ray.init(address="auto")
-
     # Start Ray Serve in detached mode
     serve.start(detached=True, http_options={"host": "0.0.0.0"})
-
     app = serve.run(app, name="app", route_prefix="/")
+
+
+if __name__ == "__main__":
+    import requests
+
+    # launch_application()
+
+    url = "http://localhost:8000/"
+    headers = {"Content-Type": "text/plain"}
+    data = "The Pilgrims, also known as the Pilgrim Fathers, were the English settlers who travel around the world until infinity"
+
+    response = requests.post(url, headers=headers, data=data)
+
+    print(response)
