@@ -11,12 +11,21 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from gcpUtils import load_model_from_vertex
+
 # from gcpUtils import load_model_from_vertex
 
 dotenv.load_dotenv()
 
 runtime_env = {
-    "pip": ["transformers", "torch", "pandas", "google-cloud-storage"],
+    "pip": [
+        "transformers",
+        "torch",
+        "pandas",
+        "google-cloud-storage",
+        "google-cloud-aiplatform",
+        "prometheus_client",
+    ],
     # "env_vars": {"RAY_DEBUG": "1", "RAY_DEBUG_POST_MORTEM": "1"},
 }
 
@@ -74,9 +83,8 @@ class MetricsCollector:
         """Increment the request counter"""
         self.request_counter.inc()
 
-    def record_score(self, score, int_score):
+    def record_score(self, int_score):
         """Record a model score"""
-        self.model_score_summary.observe(score)
         self.model_score_bucket.labels(score_bucket=str(int_score)).inc()
 
     def record_latency(self, seconds):
@@ -84,44 +92,57 @@ class MetricsCollector:
         self.inference_latency.observe(seconds)
 
 
-@serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
+# @serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
 class EduClassifierModel:
-    def __init__(self, name="EduClassifierModel"):
+    def __init__(
+        self,
+        model_name: str = "edu-classifier-v1",
+        project_id: str = "cs-3a-2024-fineweb-mlops",
+        location: str = "europe-west1",
+    ):
+        """
+        Args:
+            model_name (str): The name of the model as in vertex ai model registry
+            project_id (str): The GCP project ID
+            location(str): The GCP region where the model is hosted
+        """
         self.tokenizer = AutoTokenizer.from_pretrained(
             "HuggingFaceTB/fineweb-edu-classifier"
         )
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            "HuggingFaceTB/fineweb-edu-classifier"
+        self.model = load_model_from_vertex(
+            model_name=model_name,
+            project_id=project_id,
+            location=location,
         )
+
         # We'll use handle to communicate with the metrics collector
         self.metrics_collector = serve.get_app_handle("metrics_collector")
 
     def run_inference(self, input_text) -> dict:
+        import torch
+
         # Track inference time
         start_time = time.time()
 
         input_tokens = self.tokenizer(
             input_text, return_tensors="pt", padding="longest", truncation=True
         )
+        del input_tokens[
+            "token_type_ids"
+        ]  # Remove token_type_ids if present. Invalid arg for jit compiled models
         outputs = self.model(**input_tokens)
-        logits = outputs.logits.squeeze(-1).float().detach().numpy()
-        score = logits.item()
-        int_score = int(round(max(0, min(score, 5))))
+        # logits = outputs.logits.squeeze(-1).float().detach().numpy()
+        int_score = torch.argmax(outputs).item()
 
         # Record latency
         latency = time.time() - start_time
 
         # Record metrics asynchronously - handle DeploymentResponse correctly
         self.metrics_collector.record_request.remote()
-        self.metrics_collector.record_score.remote(score, int_score)
+        self.metrics_collector.record_score.remote(int_score)
         self.metrics_collector.record_latency.remote(latency)
 
-        result = {
-            "text": input_text,
-            "score": score,
-            "int_score": int_score,
-        }
-        return result
+        return {"score": int_score}
 
     async def __call__(self, http_request: Request) -> Response:
         import prometheus_client
@@ -171,8 +192,8 @@ class Ingress:
     def __init__(
         self, classifier_french: DeploymentHandle, classifier_english: DeploymentHandle
     ):
-        self.classifier_french_hanlde = classifier_french
-        self.classifier_english_hanlde = classifier_english
+        self.classifier_french_handle = classifier_french
+        self.classifier_english_handle = classifier_english
         print("Ingress initialized with classifier handles")
 
     async def __call__(self, request: Request) -> Response:
@@ -206,11 +227,11 @@ class Ingress:
 
             # Forward to the appropriate classifier based on language
             if text_lang[0]["label"] == "fr":
-                result = await self.classifier_french_hanlde.run_inference.remote(
+                result = await self.classifier_french_handle.run_inference.remote(
                     input_text
                 )
             elif text_lang[0]["label"] == "en":
-                result = await self.classifier_english_hanlde.run_inference.remote(
+                result = await self.classifier_english_handle.run_inference.remote(
                     input_text
                 )
             else:
@@ -219,10 +240,6 @@ class Ingress:
                     status_code=400,
                 )
 
-            # Forward with text parameter directly instead of the whole request
-            result = await self.classifier_french_hanlde.run_inference.remote(
-                input_text
-            )
             return JSONResponse(content=result)
         except Exception as e:
             import traceback
@@ -235,27 +252,42 @@ class Ingress:
             )
 
 
-metrics_collector = MetricsCollector.bind()
-classifier_app_french = EduClassifierModel.bind(name="EduClassifierModelFrench")
-classifier_app_english = EduClassifierModel.bind(name="EduClassifierModelEnglish")
-
-app = Ingress.bind(classifier_app_french, classifier_app_english)
-
-# Connect to Ray cluster
-# ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
-# ray.init(address="auto")
-
-# Start Ray Serve in detached mode
-serve.start(detached=True, http_options={"host": "0.0.0.0"})
-serve.run(metrics_collector, name="metrics_collector", route_prefix="/metrics")
-
-while True:
-    status = serve.status()
-    if "metrics_collector" not in status.applications:
-        print(
-            "Waiting for metrics collector to start before deploying classifiers, retrying in 1 second..."
+@serve.deployment(name="classifier_french", num_replicas=1)
+class FrenchClassifier(EduClassifierModel):
+    def __init__(self):
+        super().__init__(
+            model_name="edu-classifier-v1",
+            location="europe-west1",
+            project_id="cs-3a-2024-fineweb-mlops",
         )
-        time.sleep(1)
-    break
 
-app = serve.run(app, name="app", route_prefix="/")
+
+@serve.deployment(name="classifier_english", num_replicas=1)
+class EnglishClassifier(EduClassifierModel):
+    def __init__(self):
+        super().__init__(
+            model_name="edu-classifier-v1",
+            location="europe-west1",
+            project_id="cs-3a-2024-fineweb-mlops",
+        )
+
+
+if __name__ == "__main__":
+    metrics_collector = MetricsCollector.bind()
+    time.sleep(2)  # Wait for the metrics collector to initialize
+    serve.run(metrics_collector, name="metrics_collector", route_prefix="/metrics")
+    print("Metrics collector deployed")
+
+    classifier_deployment_french = FrenchClassifier.bind()
+    classifier_deployment_english = EnglishClassifier.bind()
+
+    app = Ingress.bind(classifier_deployment_french, classifier_deployment_english)
+
+    # Connect to Ray cluster
+    # ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
+    # ray.init(address="auto")
+
+    # Start Ray Serve in detached mode
+    serve.start(detached=True, http_options={"host": "0.0.0.0"})
+
+    app = serve.run(app, name="app", route_prefix="/")

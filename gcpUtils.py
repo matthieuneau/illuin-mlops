@@ -1,9 +1,13 @@
 import os
 import tempfile
 
+import google.auth
 import pandas as pd
 import torch
+from dotenv import load_dotenv
 from google.cloud import aiplatform, storage
+
+load_dotenv()
 
 
 def upload_to_bucket(
@@ -120,7 +124,7 @@ def fetch_directory_from_bucket(
 def upload_gcs_model_to_vertex(
     gcs_model_path,
     display_name,
-    project_id="swift-habitat-447619-k8",
+    project_id="cs-3a-2024-fineweb-mlops",
     location="europe-west1",
     description=None,
     labels=None,
@@ -163,8 +167,8 @@ def upload_gcs_model_to_vertex(
 
 def load_model_from_vertex(
     model_name: str,
-    project_id="swift-habitat-447619-k8",
-    location="europe-west1",
+    project_id="cs-3a-2024-fineweb-mlops",
+    location="us-central1",
 ):
     """
     Load a model from Vertex AI Model Registry. It determines the bucket in which the model is stored and loads it
@@ -176,8 +180,10 @@ def load_model_from_vertex(
     Returns:
         google.cloud.aiplatform.Model: The loaded Vertex AI model
     """
+    credentials, project = google.auth.default()
+
     # Initialize Vertex AI SDK
-    aiplatform.init(project=project_id, location=location)
+    aiplatform.init(project=project_id, location=location, credentials=credentials)
 
     # List models with the given display name
     models = aiplatform.Model.list(
@@ -201,20 +207,35 @@ def load_model_from_vertex(
     print(f"Found model: {model.display_name} (ID: {model.name})")
 
     model_uri: str = model.uri
+    bucket_name = model_uri.split("/")[2]
+    folder_name = model_uri.split("/")[3]
 
-    model = load_model_from_bucket(model_uri.split("/")[2])
+    model = load_model_from_bucket(
+        bucket_name,
+        folder_name=folder_name,
+    )
 
     return model
 
 
 if __name__ == "__main__":
-    # upload_to_bucket("fineweb-datasets", "test.txt", "test.txt")
+    # upload_gcs_model_to_vertex(
+    #     gcs_model_path="gs://fineweb_models/model_init/model_init_script.pt",
+    #     display_name="edu-classifier-v1",
+    #     project_id="cs-3a-2024-fineweb-mlops",
+    #     location="us-central1",
+    #     description="First edu classifier model that handles all the requests for now. We will have one for each language in the future",
+    # )
     # upload_directory_to_bucket(
     #     "fineweb-datasets",
     #     "data/tiny-dataset-processed.parquet",
     #     "tiny-dataset-processed",
     # )
     # model = load_model_from_bucket("dummy-model")
-    model = load_model_from_vertex("dummy_model")
+    model = load_model_from_vertex(
+        "edu-classifier-v1",
+        location="europe-west1",
+        project_id="cs-3a-2024-fineweb-mlops",
+    )
     # print(model.uri.split("/")[2])
-    print(model(torch.tensor([5.0])))
+    # print(model(torch.tensor([5.0])))
