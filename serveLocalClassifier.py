@@ -86,10 +86,7 @@ class MetricsCollector:
 
 @serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1, "num_gpus": 0})
 class EduClassifierModel:
-    def __init__(self, name="EduClassifierModel1"):
-        # print("waiting for debugger to attach...")
-        # debugpy.wait_for_client()
-        # print("debugger attached")
+    def __init__(self, name="EduClassifierModel"):
         self.tokenizer = AutoTokenizer.from_pretrained(
             "HuggingFaceTB/fineweb-edu-classifier"
         )
@@ -172,13 +169,15 @@ class EduClassifierModel:
 @serve.deployment(num_replicas=1)
 class Ingress:
     def __init__(
-        self, classifier_app1: DeploymentHandle, classifier_app2: DeploymentHandle
+        self, classifier_french: DeploymentHandle, classifier_english: DeploymentHandle
     ):
-        self.classifier1_handle = classifier_app1
-        self.classifier2_handle = classifier_app2
+        self.classifier_french_hanlde = classifier_french
+        self.classifier_english_hanlde = classifier_english
         print("Ingress initialized with classifier handles")
 
     async def __call__(self, request: Request) -> Response:
+        from transformers import pipeline
+
         # Basic health check
         if request.url.path == "/health":
             return JSONResponse({"status": "healthy"})
@@ -199,8 +198,31 @@ class Ingress:
                 except:
                     input_text = "Failed to parse request body"
 
+            lang_detector = pipeline(
+                "text-classification",
+                model="papluca/xlm-roberta-base-language-detection",
+            )
+            text_lang = lang_detector(input_text)
+
+            # Forward to the appropriate classifier based on language
+            if text_lang[0]["label"] == "fr":
+                result = await self.classifier_french_hanlde.run_inference.remote(
+                    input_text
+                )
+            elif text_lang[0]["label"] == "en":
+                result = await self.classifier_english_hanlde.run_inference.remote(
+                    input_text
+                )
+            else:
+                return JSONResponse(
+                    content={"error": f"Unsupported language: {text_lang[0]['label']}"},
+                    status_code=400,
+                )
+
             # Forward with text parameter directly instead of the whole request
-            result = await self.classifier1_handle.run_inference.remote(input_text)
+            result = await self.classifier_french_hanlde.run_inference.remote(
+                input_text
+            )
             return JSONResponse(content=result)
         except Exception as e:
             import traceback
@@ -214,10 +236,10 @@ class Ingress:
 
 
 metrics_collector = MetricsCollector.bind()
-classifier_app1 = EduClassifierModel.bind(name="EduClassifierModel1")
-classifier_app2 = EduClassifierModel.bind(name="EduClassifierModel2")
+classifier_app_french = EduClassifierModel.bind(name="EduClassifierModelFrench")
+classifier_app_english = EduClassifierModel.bind(name="EduClassifierModelEnglish")
 
-app = Ingress.bind(classifier_app1, classifier_app2)
+app = Ingress.bind(classifier_app_french, classifier_app_english)
 
 # Connect to Ray cluster
 # ray.init(address=f"ray://{os.getenv('RAY_ADDRESS')}:{os.getenv('RAY_SERVE_PORT')}")
