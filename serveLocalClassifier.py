@@ -26,7 +26,13 @@ runtime_env = {
         "google-cloud-aiplatform",
         "prometheus_client",
     ],
-    # "env_vars": {"RAY_DEBUG": "1", "RAY_DEBUG_POST_MORTEM": "1"},
+    "env_vars": {
+        "GOOGLE_APPLICATION_CREDENTIALS": dotenv.get_key(
+            ".env", "GOOGLE_APPLICATION_CREDENTIALS"
+        ),
+        "GOOGLE_CLOUD_PROJECT": dotenv.get_key(".env", "GOOGLE_CLOUD_PROJECT"),
+        "GCP_REGION": dotenv.get_key(".env", "GCP_REGION"),
+    },
 }
 
 # Initialize Ray with runtime environment
@@ -96,6 +102,7 @@ class MetricsCollector:
 class EduClassifierModel:
     def __init__(
         self,
+        model_expertise: str,
         model_name: str = "edu-classifier-v1",
         project_id: str = "cs-3a-2024-fineweb-mlops",
         location: str = "europe-west1",
@@ -106,20 +113,33 @@ class EduClassifierModel:
             project_id (str): The GCP project ID
             location(str): The GCP region where the model is hosted
         """
+        from google.cloud import bigquery
+
+        # Initialize BigQuery client
+        self.bq_client = bigquery.Client()
+        self.bq_table_id = f"{project_id}.fineweb_edu_classification.classifier_outputs"
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             "HuggingFaceTB/fineweb-edu-classifier"
         )
-        self.model = load_model_from_vertex(
+        self.model, self.model_uri = load_model_from_vertex(
             model_name=model_name,
             project_id=project_id,
             location=location,
         )
+        self.expertise = model_expertise
 
         # We'll use handle to communicate with the metrics collector
         self.metrics_collector = serve.get_app_handle("metrics_collector")
 
     def run_inference(self, input_text) -> dict:
+        import datetime
+        import hashlib
+
         import torch
+
+        text_hash = hashlib.md5(input_text.encode()).hexdigest()
+        text_preview = input_text[:50] + "..." if len(input_text) > 50 else input_text
 
         # Track inference time
         start_time = time.time()
@@ -141,6 +161,22 @@ class EduClassifierModel:
         self.metrics_collector.record_request.remote()
         self.metrics_collector.record_score.remote(int_score)
         self.metrics_collector.record_latency.remote(latency)
+
+        # Data to insert into BigQuery
+        row = {
+            "text_preview": text_preview,
+            "expertise": self.expertise,
+            "score": int_score,
+            "model_uri": self.model_uri,
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+            "text_hash": text_hash,
+        }
+
+        errors = self.bq_client.insert_rows_json(self.bq_table_id, [row])
+        if errors:
+            print(f"Error inserting rows into BigQuery: {errors}")
+        else:
+            print(f"Inserted row into BigQuery: {row}")
 
         return {"score": int_score}
 
@@ -257,6 +293,7 @@ class FrenchClassifier(EduClassifierModel):
     def __init__(self):
         super().__init__(
             model_name="edu-classifier-v1",
+            model_expertise="french",
             location="europe-west1",
             project_id="cs-3a-2024-fineweb-mlops",
         )
@@ -267,6 +304,7 @@ class EnglishClassifier(EduClassifierModel):
     def __init__(self):
         super().__init__(
             model_name="edu-classifier-v1",
+            model_expertise="english",
             location="europe-west1",
             project_id="cs-3a-2024-fineweb-mlops",
         )
@@ -291,12 +329,12 @@ def launch_application():
 if __name__ == "__main__":
     import requests
 
-    # launch_application()
+    launch_application()
 
-    url = "http://localhost:8000/"
-    headers = {"Content-Type": "text/plain"}
-    data = "The Pilgrims, also known as the Pilgrim Fathers, were the English settlers who travel around the world until infinity"
+    # url = "http://localhost:8000/"
+    # headers = {"Content-Type": "text/plain"}
+    # data = "The Pilgrims, also known as the Pilgrim Fathers, were the English settlers who travel around the world until infinity"
 
-    response = requests.post(url, headers=headers, data=data)
+    # response = requests.post(url, headers=headers, data=data)
 
-    print(response)
+    # print(response)

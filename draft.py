@@ -1,22 +1,16 @@
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import dotenv
+from google.cloud import bigquery
 
-tokenizer = AutoTokenizer.from_pretrained("HuggingFaceTB/fineweb-edu-classifier")
-model = AutoModelForSequenceClassification.from_pretrained(
-    "HuggingFaceTB/fineweb-edu-classifier"
-)
+from gcpUtils import create_big_query_dataset, create_big_query_table
 
-print(tokenizer)
+dotenv.load_dotenv()
 
-# text = "This is a test sentence."
-# inputs = tokenizer(text, return_tensors="pt", padding="longest", truncation=True)
-# outputs = model(**inputs)
-# logits = outputs.logits.squeeze(-1).float().detach().numpy()
-# score = logits.item()
-# result = {
-#     "text": text,
-#     "score": score,
-#     "int_score": int(round(max(0, min(score, 5)))),
-# }
+project_id = dotenv.get_key(".env", "GOOGLE_CLOUD_PROJECT")
+dataset_id = "fineweb_edu_classification"
+table_id = "classifier_outputs"
 
-# print(result)
-# # {'text': 'This is a test sentence.', 'score': 0.07964489609003067, 'int_score': 0}
+
+# create_big_query_dataset(project_id, dataset_id, location="europe-west1")
+
+
+create_big_query_table(project_id, dataset_id, table_id, schema)

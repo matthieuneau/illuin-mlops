@@ -215,7 +215,69 @@ def load_model_from_vertex(
         folder_name=folder_name,
     )
 
-    return model
+    return model, model_uri
+
+
+def create_big_query_dataset(
+    project_id: str,
+    dataset_id: str,
+    location: str = "europe-west1",
+):
+    """
+    Create a BigQuery dataset.
+
+    Args:
+        project_id (str): GCP project ID
+        dataset_id (str): Dataset ID to create
+
+    Returns:
+        None
+    """
+    from google.cloud import bigquery
+
+    client = bigquery.Client(project=project_id)
+
+    # Define the dataset reference
+    dataset_ref = f"{project_id}.{dataset_id}"
+
+    # Create a Dataset object
+    dataset = bigquery.Dataset(dataset_ref)
+    dataset.location = location
+
+    # Create the dataset in BigQuery
+    client.create_dataset(dataset, exists_ok=True)
+
+
+def create_big_query_table(
+    project_id: str,
+    dataset_id: str,
+    table_id: str,
+    schema: list,
+):
+    """
+    Create a BigQuery table with the specified schema.
+
+    Args:
+        project_id (str): GCP project ID
+        dataset_id (str): Dataset ID in BigQuery
+        table_id (str): Table ID to create
+        schema (list): List of dictionaries defining the schema
+
+    Returns:
+        None
+    """
+    from google.cloud import bigquery
+
+    client = bigquery.Client(project=project_id)
+
+    # Define the table reference
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
+
+    # Create a Table object
+    table = bigquery.Table(table_ref, schema=schema)
+
+    # Create the table in BigQuery
+    client.create_table(table)
 
 
 if __name__ == "__main__":

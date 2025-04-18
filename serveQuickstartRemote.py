@@ -19,7 +19,7 @@ ray.init(address="auto")
 class Model:
     def __init__(self):
         # Load model
-        self.model = load_model_from_vertex(model_name="dummy_model")
+        self.model, self.model_uri = load_model_from_vertex(model_name="dummy_model")
 
     def run_inference(self, input) -> torch.Tensor:
         input = torch.tensor(input)
